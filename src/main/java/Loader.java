@@ -11,11 +11,12 @@ import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Scanner;
+import java.util.*;
 import java.util.function.Consumer;
 
 import static com.mongodb.client.model.Indexes.ascending;
 import static com.mongodb.client.model.Indexes.descending;
+import static java.util.Arrays.asList;
 
 /**
  * Created by User on 30 Янв., 2020
@@ -43,8 +44,8 @@ public class Loader {
                 while ((nextLine = reader.readNext()) != null) {
                     Document student = new Document()
                             .append("name", nextLine[0])
-                            .append("age", nextLine[1])
-                            .append("courses", "[" + nextLine[2] + "]");
+                            .append("age", Integer.parseInt(nextLine[1]))
+                            .append("courses", Arrays.asList(nextLine[2]));
                     // Вставляем документ в коллекцию
                     collection.insertOne(student);
                 }
@@ -52,18 +53,11 @@ public class Loader {
                 e.printStackTrace();
             }
         }
-//        collection.find().forEach((Consumer<Document>) document -> {
-//            System.out.println(">" + document);
-//        });
 
         System.out.println("— общее количество студентов в базе:  " + collection.countDocuments());
         BsonDocument query = BsonDocument.parse("{age: {$gt: 40}}");
         System.out.println("— количество студентов старше 40 лет: "
                 + collection.countDocuments(query));
-
-        collection.find(new Document("age", new Document("$gt", 40)))
-                .forEach((Consumer<Document>) document
-                        -> System.out.println("студент старше сорока:\n" + document.get("name")));
 
         FindIterable<Document> doc = collection.find()
                 .sort(ascending("age"))
@@ -71,12 +65,19 @@ public class Loader {
         doc.forEach((Consumer<Document>) document -> {
             System.out.println("— имя самого молодого студента: " + document.get("name"));
         });
-        doc = collection.find()
+
+        List<Document> docs =  collection.find()
                 .sort(descending("age"))
-                .limit(1);
-        doc.forEach((Consumer<Document>) document -> {
-            System.out.println("— список курсов самого старого студента: " + document.get("courses"));
-        });
+                .limit(1)
+                .into(new ArrayList<>());
+        Document student = docs.get(0);
+        List<String> courses = new ArrayList<>();
+        courses = student.getList("courses", String.class);
+        System.out.print("— список курсов самого старого студента: ");
+        for (int i = 0; i < courses.size(); i++) {
+            System.out.print(courses.get(i));
+            System.out.print(i != courses.size() - 1 ? ", " : "");
+        }
     }
 }
 
